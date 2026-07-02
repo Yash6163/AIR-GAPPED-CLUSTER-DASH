@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clusterdash
+    volumes:
+      - postgres_swarm_data:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:7-alpine
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  backend:
+    image: clusterdash-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_SERVER=db
+      - REDIS_HOST=redis
+      - SECRET_KEY=super-secret-clusterdash-key-change-in-production
+      - WORKER_REGISTRATION_TOKEN=clusterdash-worker-secret-token
+      - ALERT_CPU_THRESHOLD_PCT=85.0
+      - ALERT_MEM_THRESHOLD_PCT=90.0
+      - ALERT_DISK_THRESHOLD_PCT=90.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    image: clusterdash-frontend:latest
+    ports:
+      - "3000:3000"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # Swarm-wide Worker daemon. Deployed in "global" mode so that exactly one replica
+  # runs on every active Swarm worker node in the cluster automatically.
+  worker-agent:
+    image: clusterdash-worker:latest
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - REGISTRATION_TOKEN=clusterdash-worker-secret-token
+      - HEARTBEAT_INTERVAL=5
+      - NODE_ROLE=worker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - backend
+
+volumes:
+  postgres_swarm_data:
