@@ -660,7 +660,7 @@ export default function Dashboard() {
           {/* OS Grouped Cluster Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Windows Card */}
-            <Link href="/cluster/windows" className="block group">
+            <Link href="/cluster?os=windows" className="block group">
               <div className="bg-card/40 border border-border hover:border-blue-500/50 rounded-2xl p-6 glow-card transition-all duration-300 relative overflow-hidden h-full">
                 <div className="absolute top-0 right-0 h-32 w-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-500" />
                 
@@ -745,7 +745,7 @@ export default function Dashboard() {
             </Link>
 
             {/* Mac Card */}
-            <Link href="/cluster/mac" className="block group">
+            <Link href="/cluster?os=mac" className="block group">
               <div className="bg-card/40 border border-border hover:border-purple-500/50 rounded-2xl p-6 glow-card transition-all duration-300 relative overflow-hidden h-full">
                 <div className="absolute top-0 right-0 h-32 w-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all duration-500" />
                 
@@ -830,7 +830,7 @@ export default function Dashboard() {
             </Link>
 
             {/* Linux Card */}
-            <Link href="/cluster/linux" className="block group">
+            <Link href="/cluster?os=linux" className="block group">
               <div className="bg-card/40 border border-border hover:border-success/50 rounded-2xl p-6 glow-card transition-all duration-300 relative overflow-hidden h-full">
                 <div className="absolute top-0 right-0 h-32 w-32 bg-success/5 rounded-full blur-2xl group-hover:bg-success/10 transition-all duration-500" />
                 

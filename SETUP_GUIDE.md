@@ -8,7 +8,7 @@ This guide will walk you through setting up a physical, distributed cluster of c
 ## 📋 Prerequisites / Requirements
 1. **Local Network Connection**: All systems (Manager and Worker nodes) **must be connected to the exact same Wi-Fi network or Local Router** so they can ping each other.
 2. **Offline Ready**: No active internet connection is required.
-3. **Manager Machine (Computer A)**: Docker and Docker Compose must be installed.
+3. **Manager Machine (Computer A)**: Python 3.x and Node.js must be installed.
 4. **Worker Machines (Computer B, C, etc.)**: Python 3.x must be installed.
 
 ---
@@ -26,8 +26,7 @@ This computer hosts the Postgres Database, Redis Cache, API Backend, and React F
    ```
 4. The script will automatically discover your local IP (e.g., `192.168.1.50`) and print it on the console along with join commands.
 5. Keep this terminal running. You can access the dashboard at:
-   - **Frontend UI**: `http://<MANAGER_IP>:3000`
-   - **Backend API**: `http://<MANAGER_IP>:8000/docs`
+   - **Frontend UI & API**: `http://<MANAGER_IP>:8000` (Swagger docs at `/docs`)
 
 ---
 
@@ -58,7 +57,7 @@ Now, register your other physical systems (macOS, Windows, or Linux) to send met
 ---
 
 ### Phase 3: Visualizing Metrics
-1. Open the dashboard at `http://<MANAGER_IP>:3000` from any computer or browser on the network.
+1. Open the dashboard at `http://<MANAGER_IP>:8000` from any computer or browser on the network.
 2. You will see all physical systems register and heartbeat live!
 3. Click on any node card to view its:
    - **System Specs**: Processor, Python versions, MAC Addresses, boot times, etc.
@@ -66,7 +65,7 @@ Now, register your other physical systems (macOS, Windows, or Linux) to send met
    - **Disk & Network**: Disk speed, partition tables, network interface speeds, and bandwidth speeds.
    - **Threads & Processes**: Table of running threads, sleeping threads, processes list, sorting by memory/CPU, and process searching.
    - **Historical Charts**: Real-time graph trends for CPU, RAM, Disk, Net speeds, and thread counts.
-   - **Database Explorer**: Go to the `/database` page to view the PostgreSQL tables (`nodes`, `metric_history`, `process_metrics`, `alerts`) directly in a premium datagrid view.
+   - **Database Explorer**: Go to the `/database` page to view the SQLite tables (`nodes`, `metric_history`, `process_metrics`, `alerts`) directly in a premium datagrid view.
 
 ---
 
@@ -85,7 +84,7 @@ Yeh computer database, caching servers, API, aur frontend dashboard chalaega.
    ```
 4. Yeh script aapka Local IP address (jaise `192.168.1.X`) auto-discover karega aur screen par worker join commands print kar dega.
 5. Is terminal ko band mat karna. Dashboard open karne ke liye kisi bhi browser me type karein:
-   - `http://<MANAGER_IP>:3000`
+   - `http://<MANAGER_IP>:8000`
 
 ---
 
@@ -116,7 +115,7 @@ Ab hum dusre computers ko is network dashboard se jodenge taaki unki hardware in
 ---
 
 ### Phase 3: Visual Dashboard aur Database Explorer Dekhein
-1. Ab kisi bhi device se browser me `http://<MANAGER_IP>:3000` open karein.
+1. Ab kisi bhi device se browser me `http://<MANAGER_IP>:8000` open karein.
 2. Dashboard par aapke physical nodes live pulse karte huye dikhenge!
 3. Kisi bhi node par click karke aap unke **CPU Cores details, Memory/Swap graphs, Disk partitions, active processes, and historical trends charts** live track kar sakte hain.
-4. **Database Explorer**: Aap **Postgres Database Viewer** (URL: `http://<MANAGER_IP>:3000/database`) par jakar database tables ka raw data search, filter, ya CSV format me export kar sakte hain.
+4. **Database Explorer**: Aap **SQLite Database Viewer** (URL: `http://<MANAGER_IP>:8000/database`) par jakar database tables ka raw data search, filter, ya CSV format me export kar sakte hain.

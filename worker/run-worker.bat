@@ -26,8 +26,14 @@ echo Activating virtual environment...
 call venv\Scripts\activate
 
 echo Ensuring required packages are installed...
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+if exist wheels (
+    echo Offline wheels directory found. Installing dependencies offline...
+    python -m pip install --no-index --find-links=wheels -r requirements.txt
+) else (
+    echo Installing dependencies online...
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+)
 
 :: Prompt for Manager IP
 echo.

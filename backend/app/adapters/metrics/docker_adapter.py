@@ -1,4 +1,8 @@
-import docker
+try:
+    import docker
+except ImportError:
+    docker = None
+
 import psutil
 import time
 import logging
@@ -9,13 +13,19 @@ logger = logging.getLogger("clusterdash.docker_adapter")
 
 class DockerSwarmAdapter(MetricSource):
     def __init__(self):
+        if docker is None:
+            self.client = None
+            self.docker_available = False
+            logger.info("Docker SDK is not installed. Container metrics are disabled.")
+            return
+            
         try:
             self.client = docker.from_env()
             self.client.ping()
             self.docker_available = True
             logger.info("Docker API client initialized successfully.")
         except Exception as e:
-            logger.error(f"Failed to connect to Docker socket: {e}")
+            logger.info(f"Failed to connect to Docker socket: {e}. Container monitoring disabled.")
             self.client = None
             self.docker_available = False
 

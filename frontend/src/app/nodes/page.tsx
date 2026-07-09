@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   Server, Shield, RefreshCw, Cpu, Database, Network, 
@@ -84,8 +85,9 @@ interface Node {
   };
 }
 
-export default function NodeDetailPage({ params }: { params: { node_id: string } }) {
-  const nodeId = params.node_id;
+function NodeDetailContent() {
+  const searchParams = useSearchParams();
+  const nodeId = searchParams.get("id");
 
   const [node, setNode] = useState<Node | null>(null);
   const [threadStats, setThreadStats] = useState<ThreadStats>({
@@ -123,9 +125,8 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   }, []);
 
   const fetchNodeDetails = async () => {
-    if (!apiUrls) return;
+    if (!apiUrls || !nodeId) return;
     try {
-      // Use extended V2 detailed api
       const res = await fetch(`${apiUrls.rest}/node/${nodeId}`);
       if (res.status === 404) return;
       const data: Node = await res.json();
@@ -136,7 +137,7 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   };
 
   const fetchThreads = async () => {
-    if (!apiUrls) return;
+    if (!apiUrls || !nodeId) return;
     try {
       const res = await fetch(`${apiUrls.rest}/node/${nodeId}/threads`);
       if (res.status === 404) return;
@@ -148,7 +149,7 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   };
 
   const fetchHistory = async () => {
-    if (!apiUrls) return;
+    if (!apiUrls || !nodeId) return;
     try {
       const res = await fetch(`${apiUrls.rest}/history?node_id=${nodeId}&limit=30`);
       const histData = await res.json();
@@ -176,23 +177,21 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   };
 
   useEffect(() => {
-    if (!apiUrls) return;
+    if (!apiUrls || !nodeId) return;
     
     fetchNodeDetails();
     fetchThreads();
     fetchHistory();
 
-    // Auto-refresh thread lists every 4 seconds
     const interval = setInterval(() => {
       fetchThreads();
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [apiUrls]);
+  }, [apiUrls, nodeId]);
 
-  // WebSocket broker connection
   useEffect(() => {
-    if (!apiUrls) return;
+    if (!apiUrls || !nodeId) return;
 
     const connectWS = () => {
       if (wsRef.current) wsRef.current.close();
@@ -226,7 +225,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 };
               });
 
-              // Update history live
               setHistory(prev => {
                 const total_ram = data.memory_used + data.memory_free;
                 const ram_pct = total_ram > 0 ? (data.memory_used / total_ram) * 100 : 0;
@@ -243,7 +241,7 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                   cpu: data.cpu_usage,
                   ram: ram_pct,
                   disk: diskPercent,
-                  net_tx: data.detailed_metrics?.disk_read_speed || data.net_send || 0, // Fallback speed
+                  net_tx: data.detailed_metrics?.disk_read_speed || data.net_send || 0,
                   net_rx: data.detailed_metrics?.disk_write_speed || data.net_recv || 0,
                   threads: data.total_threads || 0,
                   time: new Date(data.last_heartbeat).toLocaleTimeString([], { second: '2-digit' }) + "s"
@@ -295,7 +293,7 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
       if (wsRef.current) wsRef.current.close();
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
-  }, [apiUrls]);
+  }, [apiUrls, nodeId]);
 
   if (!node) {
     return (
@@ -321,7 +319,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   const sys = node.system_info || {};
   const det = node.detailed_metrics || {};
 
-  // Sort and filter processes
   const filteredProcesses = threadStats.processes
     .filter(p => p.name.toLowerCase().includes(searchProcess.toLowerCase()) || p.pid.toString().includes(searchProcess))
     .sort((a, b) => {
@@ -345,7 +342,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
   return (
     <div className="min-h-screen bg-background text-foreground cyber-grid pb-16">
       
-      {/* Header */}
       <header className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -375,10 +371,8 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
         </div>
       </header>
 
-      {/* Main Layout Grid with sticky sidebar */}
       <div className="max-w-7xl mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
         
-        {/* Navigation Sidebar */}
         <div className="lg:col-span-1">
           <div className="bg-card/40 border border-border rounded-2xl p-4 space-y-1.5 sticky top-24">
             <button
@@ -429,10 +423,8 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
           </div>
         </div>
 
-        {/* Content sections */}
         <div className="lg:col-span-3 space-y-8">
           
-          {/* SECTION 1: SYSTEM OVERVIEW SPECS */}
           {activeSection === "overview" && (
             <div className="space-y-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -458,7 +450,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
             </div>
           )}
 
-          {/* SECTION 2: CPU & MEMORY DETAIL GAUGE */}
           {activeSection === "cpu-mem" && (
             <div className="space-y-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -468,7 +459,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* CPU stats */}
                 <div className="bg-card/30 border border-border rounded-2xl p-6 space-y-4">
                   <h3 className="font-bold text-white text-sm">Processor Core Usage</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -479,7 +469,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                     <SpecItem label="CPU Temperature" value={det.cpu_temp ? `${det.cpu_temp.toFixed(1)} °C` : "Not available"} />
                   </div>
 
-                  {/* Per Core progress bars */}
                   {det.per_core_cpu && det.per_core_cpu.length > 0 && (
                     <div className="pt-4 border-t border-border/40 space-y-2">
                       <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Per-Core CPU Usage</span>
@@ -500,7 +489,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                   )}
                 </div>
 
-                {/* Memory details */}
                 <div className="bg-card/30 border border-border rounded-2xl p-6 space-y-4">
                   <h3 className="font-bold text-white text-sm">RAM & Swap Memory</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -549,11 +537,9 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
             </div>
           )}
 
-          {/* SECTION 3: STORAGE & NETWORK */}
           {activeSection === "storage" && (
             <div className="space-y-6">
               
-              {/* Partitions detail */}
               <div className="bg-card/30 border border-border rounded-2xl p-6 space-y-4">
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                   <HardDrive className="h-5 w-5 text-primary" />
@@ -596,7 +582,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* Connected network interfaces */}
               <div className="bg-card/30 border border-border rounded-2xl p-6 space-y-4">
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                   <Radio className="h-5 w-5 text-primary" />
@@ -645,11 +630,9 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
             </div>
           )}
 
-          {/* SECTION 4: THREADS & PROCESS LIST */}
           {activeSection === "threads" && (
             <div className="space-y-6">
               
-              {/* Aggregates */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="bg-card/40 border border-border rounded-xl p-4">
                   <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider block">Total Processes</span>
@@ -675,7 +658,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* Processes Table Grid */}
               <div className="bg-card/30 border border-border rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center gap-4">
                   <h3 className="font-bold text-white text-sm">Thread & Process Monitor</h3>
@@ -735,11 +717,9 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
             </div>
           )}
 
-          {/* SECTION 5: RESOURCE VISUALIZATION HISTORICAL TIMELINES */}
           {activeSection === "charts" && (
             <div className="space-y-8">
               
-              {/* CPU Timeline */}
               <div className="bg-card/30 border border-border rounded-2xl p-6">
                 <h3 className="text-sm font-bold text-white mb-4">CPU Usage Timeline (%)</h3>
                 <div className="h-64 w-full">
@@ -761,7 +741,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* RAM Timeline */}
               <div className="bg-card/30 border border-border rounded-2xl p-6">
                 <h3 className="text-sm font-bold text-white mb-4">RAM Allocation Timeline (%)</h3>
                 <div className="h-64 w-full">
@@ -783,7 +762,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* Disk usage Timeline */}
               <div className="bg-card/30 border border-border rounded-2xl p-6">
                 <h3 className="text-sm font-bold text-white mb-4">Disk Usage Timeline (%)</h3>
                 <div className="h-64 w-full">
@@ -805,7 +783,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* Network Timeline */}
               <div className="bg-card/30 border border-border rounded-2xl p-6">
                 <h3 className="text-sm font-bold text-white mb-4">Network Speed Timeline (Bytes/s)</h3>
                 <div className="h-64 w-full">
@@ -823,7 +800,6 @@ export default function NodeDetailPage({ params }: { params: { node_id: string }
                 </div>
               </div>
 
-              {/* Thread count Timeline */}
               <div className="bg-card/30 border border-border rounded-2xl p-6">
                 <h3 className="text-sm font-bold text-white mb-4">Thread Count Timeline</h3>
                 <div className="h-64 w-full">
@@ -862,5 +838,13 @@ function SpecItem({ label, value }: { label: string; value: string }) {
       <span className="text-gray-400">{label}:</span>
       <span className="text-white font-medium text-right max-w-xs truncate">{value}</span>
     </div>
+  );
+}
+
+export default function NodeDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading node details...</div>}>
+      <NodeDetailContent />
+    </Suspense>
   );
 }

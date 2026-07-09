@@ -24,8 +24,14 @@ echo "Activating virtual environment..."
 source venv/bin/activate
 
 echo "Ensuring required packages are installed..."
-pip install --upgrade pip
-pip install -r requirements.txt
+if [ -d "wheels" ]; then
+    echo "Offline wheels directory found. Installing dependencies offline..."
+    python3 -m pip install --no-index --find-links=wheels -r requirements.txt
+else
+    echo "Installing dependencies online..."
+    python3 -m pip install --upgrade pip
+    python3 -m pip install -r requirements.txt
+fi
 
 # Prompt for Manager IP Address
 echo ""

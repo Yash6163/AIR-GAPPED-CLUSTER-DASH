@@ -8,7 +8,10 @@ import json
 import logging
 import datetime
 import psutil
-import docker
+try:
+    import docker
+except ImportError:
+    docker = None
 from typing import Dict, Any, List
 
 # Setup logging
@@ -39,6 +42,12 @@ class WorkerDaemon:
         self.last_io_time = None
         
     def _init_docker(self):
+        if docker is None:
+            self.docker_client = None
+            self.docker_available = False
+            logger.info("Docker SDK not installed. Container monitoring disabled.")
+            return
+            
         try:
             self.docker_client = docker.from_env()
             self.docker_client.ping()
@@ -86,10 +95,15 @@ class WorkerDaemon:
         """Helper to discover the node's network IP Address."""
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            s.connect(('8.8.8.8', 1))
+            # Use private class IP which resolves locally via interface routing without hitting internet
+            s.connect(('10.255.255.255', 1))
             ip = s.getsockname()[0]
         except Exception:
-            ip = '127.0.0.1'
+            try:
+                # Fallback to hostname lookup
+                ip = socket.gethostbyname(socket.gethostname())
+            except Exception:
+                ip = '127.0.0.1'
         finally:
             s.close()
         return ip

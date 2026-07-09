@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   Server, Shield, RefreshCw, Cpu, Database, Network, 
@@ -42,8 +43,9 @@ interface Node {
   detailed_metrics?: any;
 }
 
-export default function ClusterDetailPage({ params }: { params: { os: string } }) {
-  const osTarget = params.os.toLowerCase();
+function ClusterDetailContent() {
+  const searchParams = useSearchParams();
+  const osTarget = (searchParams.get("os") || "windows").toLowerCase();
   const osLabel = osTarget === "darwin" || osTarget === "mac" || osTarget === "macos"
     ? "macOS" 
     : osTarget === "linux"
@@ -76,7 +78,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
       
       const nodeRecords: Record<string, Node> = {};
       nodesData.forEach(n => {
-        // Filter by OS (darwin/mac/macos map together)
         const nodeOs = n.os?.toLowerCase();
         const matchesOs = osTarget === "mac" 
           ? (nodeOs === "darwin" || nodeOs === "mac" || nodeOs === "macos") 
@@ -104,9 +105,8 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
   useEffect(() => {
     if (!apiUrls) return;
     bootstrapData();
-  }, [apiUrls]);
+  }, [apiUrls, osTarget]);
 
-  // WebSocket connection
   useEffect(() => {
     if (!apiUrls) return;
 
@@ -130,7 +130,7 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
 
           if (eventName === "metrics_update") {
             setNodes((prev) => {
-              if (!prev[data.node_id]) return prev; // Ignore if not our OS cluster
+              if (!prev[data.node_id]) return prev;
               const node = prev[data.node_id];
               return {
                 ...prev,
@@ -204,11 +204,9 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
       if (wsRef.current) wsRef.current.close();
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
-  }, [apiUrls]);
+  }, [apiUrls, osLabel]);
 
   const nodeArray = Object.values(nodes);
-  
-  // Designate first node or any manager role node as the topology manager root
   const managerNode = nodeArray.find(n => n.role === "manager") || nodeArray[0];
   const workerNodes = nodeArray.filter(n => n.id !== managerNode?.id);
 
@@ -224,7 +222,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
   return (
     <div className="min-h-screen bg-background text-foreground cyber-grid pb-12">
       
-      {/* Broker alert banner */}
       {!wsConnected && (
         <div className="bg-destructive/15 border-b border-destructive/30 py-2.5 px-4 text-center flex items-center justify-center gap-2 text-sm text-destructive font-medium animate-pulse">
           <AlertTriangle className="h-4 w-4" />
@@ -232,7 +229,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
         </div>
       )}
 
-      {/* Header Bar */}
       <header className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -265,7 +261,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
         </div>
       </header>
 
-      {/* Main topology screen */}
       <main className="max-w-7xl mx-auto px-6 mt-8">
         
         {nodeArray.length === 0 ? (
@@ -279,7 +274,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
         ) : (
           <div className="space-y-12">
             
-            {/* Real-time network visualization */}
             <div className="bg-card/20 border border-border rounded-2xl p-8 relative overflow-hidden">
               <div className="absolute top-0 right-0 h-40 w-40 bg-primary/5 rounded-full blur-3xl -z-10" />
               
@@ -294,10 +288,8 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
                 </div>
               </div>
 
-              {/* Dynamic SVG layout diagram connecting node cards */}
               <div className="border border-border/40 bg-black/40 rounded-xl p-6 relative min-h-[450px] flex flex-col items-center justify-between">
                 
-                {/* SVG link canvas */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="svg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -306,14 +298,12 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
                     </linearGradient>
                   </defs>
 
-                  {/* Connect Manager node at top center (approx center-top) to Worker nodes below */}
                   {managerNode && workerNodes.map((worker, index) => {
                     const wCount = workerNodes.length;
                     const wPct = wCount === 1 ? 50 : ((index) / (wCount - 1)) * 80 + 10;
                     
                     return (
                       <g key={worker.id}>
-                        {/* Dynamic path link */}
                         <path 
                           d={`M 50% 120 C 50% 200, ${wPct}% 200, ${wPct}% 310`}
                           fill="none" 
@@ -338,14 +328,12 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
                   })}
                 </svg>
 
-                {/* Manager Node Position */}
                 {managerNode && (
                   <div className="z-10 mb-20">
                     <NodeCard node={managerNode} isManager={true} formatBytes={formatBytes} />
                   </div>
                 )}
 
-                {/* Workers Node Position Grid */}
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 z-10">
                   {workerNodes.map((worker) => (
                     <NodeCard key={worker.id} node={worker} isManager={false} formatBytes={formatBytes} />
@@ -368,7 +356,6 @@ export default function ClusterDetailPage({ params }: { params: { os: string } }
 function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boolean; formatBytes: any }) {
   const isOnline = node.status === "online";
   
-  // Disk calculations
   let diskPercent = 0;
   if (node.detailed_metrics && node.detailed_metrics.disk_partitions && node.detailed_metrics.disk_partitions.length > 0) {
     diskPercent = Math.round(node.detailed_metrics.disk_partitions[0].percent || 0);
@@ -377,12 +364,11 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
     diskPercent = totalDisk > 0 ? Math.round((node.disk_used! / totalDisk) * 100) : 0;
   }
 
-  // RAM calculations
   const totalRamGb = node.total_memory / (1024 * 1024 * 1024);
   const ramPercent = totalRamGb > 0 ? ((node.memory_used || 0) / node.total_memory) * 100 : 0;
 
   return (
-    <Link href={`/nodes/${node.id}`} className="block">
+    <Link href={`/nodes?id=${node.id}`} className="block">
       <div className={`bg-card border rounded-2xl p-5 glow-card transition-all duration-300 w-full hover:scale-[1.02] ${
         isManager ? "border-primary/80 ring-2 ring-primary/20 max-w-sm mx-auto" : "border-border"
       }`}>
@@ -421,7 +407,6 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
           </div>
         </div>
 
-        {/* Specs Table */}
         <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-border/40 text-[10px] text-gray-400">
           <div>
             Container ID: <strong className="text-white font-mono">{node.container_id ? node.container_id.substring(0, 10) : "N/A"}</strong>
@@ -431,10 +416,8 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
           </div>
         </div>
 
-        {/* Telemetry Progress bars */}
         {isOnline ? (
           <div className="space-y-2.5 mt-4 pt-3 border-t border-border/40">
-            {/* CPU */}
             <div>
               <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
                 <span>CPU Usage</span>
@@ -448,7 +431,6 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
               </div>
             </div>
 
-            {/* RAM */}
             <div>
               <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
                 <span>RAM Allocation</span>
@@ -462,7 +444,6 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
               </div>
             </div>
 
-            {/* Disk */}
             <div>
               <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
                 <span>Disk Usage</span>
@@ -491,5 +472,13 @@ function NodeCard({ node, isManager, formatBytes }: { node: Node; isManager: boo
         </div>
       </div>
     </Link>
+  );
+}
+
+export default function ClusterDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading cluster details...</div>}>
+      <ClusterDetailContent />
+    </Suspense>
   );
 }

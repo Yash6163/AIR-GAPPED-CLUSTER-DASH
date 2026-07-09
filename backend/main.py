@@ -2,8 +2,11 @@ import asyncio
 import logging
 import socket
 import datetime
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
@@ -90,13 +93,27 @@ if settings.BACKEND_CORS_ORIGINS:
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router)
 
-@app.get("/")
-def read_root():
-    return {
-        "app": settings.PROJECT_NAME,
-        "status": "healthy",
-        "api_docs": "/docs"
-    }
+# Define static files directory path
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../frontend/out")
+
+# Dynamic SPA fallback exception handler for 404 errors
+@app.exception_handler(404)
+async def spa_fallback(request, exc):
+    # If it's an API request, return normal 404 JSON
+    if request.url.path.startswith("/api") or request.url.path.startswith("/ws"):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    
+    # Otherwise fallback to index.html for React router handles
+    fallback_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(fallback_path):
+        return FileResponse(fallback_path)
+    return JSONResponse(status_code=404, content={"detail": "Dashboard assets not found. Please run package-offline.sh first."})
+
+# Mount static files at / to serve the built Next.js UI dashboard
+if os.path.exists(STATIC_DIR):
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+else:
+    logger.warning(f"Static directory '{STATIC_DIR}' does not exist. Serving API backend only.")
 
 if __name__ == "__main__":
     import uvicorn
