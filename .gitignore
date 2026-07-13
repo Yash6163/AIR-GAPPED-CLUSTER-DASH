@@ -32,3 +32,6 @@ worker/venv/
 # Local databases
 *.db
 clusterdash.db
+
+# Offline assets
+offline-assets/

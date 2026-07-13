@@ -14,30 +14,43 @@ WHEELS_DIR="./offline-assets/wheels"
 mkdir -p "$WHEELS_DIR"
 
 echo -e "\033[1;33m[1/4] Downloading Python dependencies (Wheels) for Backend...\033[0m"
+# Download for current host architecture (macOS)
 python3 -m pip download -r backend/requirements.txt -d "$WHEELS_DIR"
+
+# Download Linux x86_64 pre-compiled binary wheels for various Python versions (3.7 - 3.13)
+for pyver in 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
+  echo "Downloading backend wheels for Linux x86_64 (Python $pyver)..."
+  python3 -m pip download -r backend/requirements.txt \
+    --python-version "$pyver" \
+    --platform manylinux2014_x86_64 \
+    --only-binary=:all: \
+    -d "$WHEELS_DIR" 2>/dev/null || true
+done
+
 
 echo -e "\033[1;33m[2/4] Downloading Python dependencies (Wheels) for Worker...\033[0m"
 # Download for current machine's environment
 python3 -m pip download -r worker/requirements.txt -d "$WHEELS_DIR"
 
-# Download specifically for Windows x86_64 compatibility
-python3 -m pip download -r worker/requirements.txt \
-  --platform win_amd64 \
-  --only-binary=:all: \
-  -d "$WHEELS_DIR" 2>/dev/null || true
+# Download specifically for Windows x86_64 compatibility across multiple Python versions
+for pyver in 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
+  echo "Downloading worker wheels for Windows x86_64 (Python $pyver)..."
+  python3 -m pip download -r worker/requirements.txt \
+    --python-version "$pyver" \
+    --platform win_amd64 \
+    --only-binary=:all: \
+    -d "$WHEELS_DIR" 2>/dev/null || true
+done
 
-# Download specifically for Linux x86_64 compatibility (modern Python)
-python3 -m pip download -r worker/requirements.txt \
-  --platform manylinux2014_x86_64 \
-  --only-binary=:all: \
-  -d "$WHEELS_DIR" 2>/dev/null || true
-
-# Download specifically for legacy Python 3.6 (Rocky Linux) compatibility
-python3 -m pip download -r worker/requirements.txt \
-  --python-version 3.6 \
-  --platform manylinux2014_x86_64 \
-  --only-binary=:all: \
-  -d "$WHEELS_DIR" 2>/dev/null || true
+# Download specifically for Linux x86_64 compatibility across multiple Python versions (including legacy 3.6)
+for pyver in 3.6 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
+  echo "Downloading worker wheels for Linux x86_64 (Python $pyver)..."
+  python3 -m pip download -r worker/requirements.txt \
+    --python-version "$pyver" \
+    --platform manylinux2014_x86_64 \
+    --only-binary=:all: \
+    -d "$WHEELS_DIR" 2>/dev/null || true
+done
 
 
 echo -e "\033[1;33m[3/4] Downloading core Python packaging utilities (pip, setuptools, wheel)...\033[0m"
