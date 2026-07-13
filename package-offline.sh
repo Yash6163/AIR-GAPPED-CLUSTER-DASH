@@ -19,10 +19,14 @@ python3 -m pip download -r backend/requirements.txt -d "$WHEELS_DIR"
 
 # Download Linux x86_64 pre-compiled binary wheels for various Python versions (3.7 - 3.13)
 for pyver in 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
-  echo "Downloading backend wheels for Linux x86_64 (Python $pyver)..."
+  pyver_nodot=$(echo "$pyver" | tr -d '.')
+  echo "Downloading backend wheels for Linux x86_64 (Python $pyver, ABI cp$pyver_nodot)..."
   python3 -m pip download -r backend/requirements.txt \
     --python-version "$pyver" \
     --platform manylinux2014_x86_64 \
+    --platform manylinux_2_17_x86_64 \
+    --implementation cp \
+    --abi "cp${pyver_nodot}" \
     --only-binary=:all: \
     -d "$WHEELS_DIR" 2>/dev/null || true
 done
@@ -34,20 +38,27 @@ python3 -m pip download -r worker/requirements.txt -d "$WHEELS_DIR"
 
 # Download specifically for Windows x86_64 compatibility across multiple Python versions
 for pyver in 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
-  echo "Downloading worker wheels for Windows x86_64 (Python $pyver)..."
+  pyver_nodot=$(echo "$pyver" | tr -d '.')
+  echo "Downloading worker wheels for Windows x86_64 (Python $pyver, ABI cp$pyver_nodot)..."
   python3 -m pip download -r worker/requirements.txt \
     --python-version "$pyver" \
     --platform win_amd64 \
+    --implementation cp \
+    --abi "cp${pyver_nodot}" \
     --only-binary=:all: \
     -d "$WHEELS_DIR" 2>/dev/null || true
 done
 
 # Download specifically for Linux x86_64 compatibility across multiple Python versions (including legacy 3.6)
 for pyver in 3.6 3.7 3.8 3.9 3.10 3.11 3.12 3.13; do
-  echo "Downloading worker wheels for Linux x86_64 (Python $pyver)..."
+  pyver_nodot=$(echo "$pyver" | tr -d '.')
+  echo "Downloading worker wheels for Linux x86_64 (Python $pyver, ABI cp$pyver_nodot)..."
   python3 -m pip download -r worker/requirements.txt \
     --python-version "$pyver" \
     --platform manylinux2014_x86_64 \
+    --platform manylinux_2_17_x86_64 \
+    --implementation cp \
+    --abi "cp${pyver_nodot}" \
     --only-binary=:all: \
     -d "$WHEELS_DIR" 2>/dev/null || true
 done
